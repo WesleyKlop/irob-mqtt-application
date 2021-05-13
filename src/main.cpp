@@ -17,6 +17,7 @@ ESP8266WiFiMulti wifi;
 PubSubClient mqtt(wifiClient);
 
 Servo servo;
+
 const char *mqtt_host = "192.168.178.10";
 const char *mqtt_client_name = "esp8266-client-01";
 
@@ -50,11 +51,15 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length) {
     if (message == "open") {
         Serial.println("OPEN");
         servo.write(180);
+        // "Turn on the lights"
+        digitalWrite(LED_BUILTIN, HIGH);
     }
     if (message == "close") {
         Serial.println("CLOSE");
         servo.write(0);
         lastCard = "";
+        // Turn the lights back off.
+        digitalWrite(LED_BUILTIN, HIGH);
     }
 }
 
