@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  broker:
+    image: eclipse-mosquitto:2
+    volumes:
+      - mqtt-data:/mosquitto/data
+      - ./docker/mosquitto:/mosquitto/config
+    ports:
+      - 1883:1883
+      - 9001:9001
+
+
+volumes:
+  mqtt-data:
