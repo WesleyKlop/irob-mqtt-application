@@ -20,6 +20,8 @@ Servo servo;
 const char *mqtt_host = "192.168.178.10";
 const char *mqtt_client_name = "esp8266-client-01";
 
+String lastCard;
+
 void ensure_mqtt_connection() {
     while (!mqtt.connected()) {
         if (!mqtt.connect(mqtt_client_name, "esp8266", "irob-is-cool")) {
@@ -52,6 +54,7 @@ void mqtt_callback(char *topic, byte *payload, unsigned int length) {
     if (message == "close") {
         Serial.println("CLOSE");
         servo.write(0);
+        lastCard = "";
     }
 }
 
@@ -81,8 +84,6 @@ void setup() {
     ensure_mqtt_connection();
 }
 
-String lastCard;
-
 void loop() {
     ensure_mqtt_connection();
     mqtt.loop();
@@ -100,6 +101,7 @@ void loop() {
         content.concat(String(reader.uid.uidByte[i] < 0x10 ? " 0" : " "));
         content.concat(String(reader.uid.uidByte[i], HEX));
     }
+    content.trim();
     content.toUpperCase();
 
     // Make sure we don't DoS our broker

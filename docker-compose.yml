@@ -8,8 +8,15 @@ services:
       - ./docker/mosquitto:/mosquitto/config
     ports:
       - 1883:1883
-      - 9001:9001
+    networks:
+      - net
+  auth:
+    build: auth-service
+    networks:
+      - net
 
+networks:
+  net:
 
 volumes:
   mqtt-data:
