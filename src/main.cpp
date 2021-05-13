@@ -3,21 +3,24 @@
 #include <MFRC522.h>
 #include <ESP8266WiFiMulti.h>
 #include <PubSubClient.h>
+#include <Servo.h>
 
 #include "secrets.h"
 
-#define SS_PIN D4
+#define SERVO_PIN D2
 #define RST_PIN D3
+#define SS_PIN D4
 
 MFRC522 reader(SS_PIN, RST_PIN);
 WiFiClient wifiClient;
 ESP8266WiFiMulti wifi;
 PubSubClient mqtt(wifiClient);
 
+Servo servo;
 const char *mqtt_host = "192.168.178.10";
 const char *mqtt_client_name = "esp8266-client-01";
 
-void reconnect_mqtt() {
+void ensure_mqtt_connection() {
     while (!mqtt.connected()) {
         if (!mqtt.connect(mqtt_client_name, "esp8266", "irob-is-cool")) {
             Serial.print("Failed to connect to mqtt: ");
@@ -25,9 +28,30 @@ void reconnect_mqtt() {
             delay(1000);
         } else {
             Serial.println("(Re)connected to mqtt broker");
-            mqtt.subscribe("door/state");
+            if (mqtt.subscribe("door/state") == false) {
+                Serial.println("Could not subscribe to topic 'door/state'");
+            }
             mqtt.publish("hello", mqtt_client_name);
         }
+    }
+}
+
+void mqtt_callback(char *topic, byte *payload, unsigned int length) {
+    Serial.print("Message arrived [");
+    Serial.print(topic);
+    Serial.print("] ");
+    String message = "";
+    for (int i = 0; i < length; i++) {
+        message.concat((char)payload[i]);
+    }
+    Serial.println(message);
+    if (message == "open") {
+        Serial.println("OPEN");
+        servo.write(180);
+    }
+    if (message == "close") {
+        Serial.println("CLOSE");
+        servo.write(0);
     }
 }
 
@@ -35,6 +59,9 @@ void setup() {
     wifi.addAP(WIFI_SSID, WIFI_PASS);
     Serial.begin(9600);
     SPI.begin();
+
+    // Configure servo
+    servo.attach(SERVO_PIN);
 
     // Configure wifi
     while (wifi.run() != WL_CONNECTED) {
@@ -49,18 +76,17 @@ void setup() {
 
     // Configure mqtt client
     mqtt.setServer(mqtt_host, 1883);
-    mqtt.setCallback([](char *topic, byte *payload, unsigned int length) {
-        Serial.println(topic);
-        Serial.println((char *) payload);
-    });
+    mqtt.setCallback(mqtt_callback);
 
-    reconnect_mqtt();
+    ensure_mqtt_connection();
 }
 
 String lastCard;
 
 void loop() {
-    reconnect_mqtt();
+    ensure_mqtt_connection();
+    mqtt.loop();
+
     if (!reader.PICC_IsNewCardPresent()) {
         return;
     }
